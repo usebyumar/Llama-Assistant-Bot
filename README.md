@@ -37,7 +37,7 @@ Lama-Assistant-bot/
 ├── env/                   # Virtual environment
 └── README.md             # Documentation
 
-Usage
+## Usage
 1.Activate the virtual environment (if not already activated):
 # Windows
 env\Scripts\activate
@@ -48,7 +48,7 @@ source env/bin/activate
 2.Run the bot:
 python bot.py
 
-Contributing
+## Contributing
 1.Fork the repository
 2.Create your feature branch (git checkout -b feature/AmazingFeature)
 3.Commit your changes (git commit -m 'Add some AmazingFeature')

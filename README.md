@@ -36,9 +36,12 @@ Lama Assistant Bot is a conversational AI assistant that helps users interact wi
     pip install -r requirements.txt
     ```
 
-## Project Structure
-Lama-Assistant-bot/ ├── bot.py # Main bot implementation ├── tests/ # Test files ├── env/ # Virtual environment └── README.md # Documentation
-
+Lama-Assistant-bot/
+├── bot.py                 # Main bot implementation
+├── tests/                 # Test files
+├── env/                   # Virtual environment
+├── requirements.txt       # Python dependencies
+└── README.md              # Documentation
 ## Usage
 
 1. Activate the virtual environment (if not already activated):

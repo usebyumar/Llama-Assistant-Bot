@@ -1,4 +1,4 @@
-# Lama Assistant Bot
+# Lama 2 Assistant Bot
 
 A Python-based assistant bot using LLM technology.
 

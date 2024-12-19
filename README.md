@@ -72,10 +72,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Additional Setup
 
-Don't forget to also create a `requirements.txt` file to list all the Python dependencies. You can create it in your project root with:
+Don't forget to install `requirements.txt` file to list all the Python dependencies.
 ```bash
-pip freeze > requirements.txt
-
+pip install requirements.txt
+```
 git init
 git add .
 git commit -m "Initial commit"

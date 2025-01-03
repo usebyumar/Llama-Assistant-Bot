@@ -3,6 +3,13 @@ import pyttsx3
 import subprocess
 import time
 import threading
+from colorama import init, Fore, Style
+import json
+import random
+from datetime import datetime
+
+# Initialize colorama
+init()
 
 # Initialize the recognizer for speech-to-text
 recognizer = sr.Recognizer()
@@ -11,6 +18,46 @@ recognizer = sr.Recognizer()
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)  # Speed of speech
 engine.setProperty('volume', 1)  # Volume level
+
+# Configuration
+CONFIG = {
+    "wake_word": "hey assistant",
+    "voice_rate": 150,
+    "voice_volume": 1.0,
+    "energy_threshold": 1000,
+    "timeout": 10,
+    "voices": {},  # Will be populated after init
+}
+
+# Initialize voice options
+voices = engine.getProperty('voices')
+CONFIG["voices"] = {voice.name: voice.id for voice in voices}
+engine.setProperty('voice', voices[0].id)  # Default voice
+
+def change_voice(voice_index):
+    if 0 <= voice_index < len(voices):
+        engine.setProperty('voice', voices[voice_index].id)
+        speak("Voice changed successfully")
+
+def save_conversation(user_input, response):
+    with open("conversation_history.txt", "a", encoding='utf-8') as f:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"\n[{timestamp}]\nUser: {user_input}\nAssistant: {response}\n{'-'*50}")
+
+def process_commands(query):
+    commands = {
+        "change voice": lambda: change_voice(random.randint(0, len(voices)-1)),
+        "speak faster": lambda: engine.setProperty('rate', min(CONFIG["voice_rate"] + 50, 300)),
+        "speak slower": lambda: engine.setProperty('rate', max(CONFIG["voice_rate"] - 50, 100)),
+        "volume up": lambda: engine.setProperty('volume', min(CONFIG["voice_volume"] + 0.1, 1.0)),
+        "volume down": lambda: engine.setProperty('volume', max(CONFIG["voice_volume"] - 0.1, 0.1))
+    }
+    
+    for cmd, func in commands.items():
+        if cmd in query.lower():
+            func()
+            return True
+    return False
 
 # Set up an event to control the speech loop
 stop_flag = threading.Event()
@@ -22,63 +69,69 @@ def speak(response):
 
 def listen():
     with sr.Microphone() as source:
-        print("Adjusting for ambient noise...")
+        print(f"{Fore.YELLOW}Adjusting for ambient noise...{Style.RESET_ALL}")
         recognizer.adjust_for_ambient_noise(source, duration=1)
-        print("Listening...")
         
-        # Configure recognition parameters
-        recognizer.energy_threshold = 1000  # Minimum audio energy to detect
-        recognizer.dynamic_energy_threshold = True
-        recognizer.pause_threshold = 2.0  # Seconds of silence before considering the phrase complete
-        recognizer.phrase_threshold = 0.3  # Minimum seconds of speaking audio before we consider the speech a phrase
+        # Visual feedback
+        print(f"{Fore.GREEN}🎤 Listening...{Style.RESET_ALL}")
         
         try:
-            # Listen for speech and convert to text
-            audio = recognizer.listen(source, timeout=10, phrase_time_limit=None)
-            # Save the audio to a file for debugging
-            with open("debug_audio.wav", "wb") as f:
-                f.write(audio.get_wav_data())
-                
+            audio = recognizer.listen(source, timeout=CONFIG["timeout"])
             user_input = recognizer.recognize_google(audio)
-            print(f"You said: {user_input}")
-            return user_input
-            
+            print(f"{Fore.CYAN}You said: {user_input}{Style.RESET_ALL}")
+            return user_input.lower()
         except sr.WaitTimeoutError:
-            print("No speech detected within timeout period")
-            return None
+            print(f"{Fore.RED}⏰ Listening timeout{Style.RESET_ALL}")
         except sr.UnknownValueError:
-            print("Sorry, I did not understand that.")
-            return "Sorry, I did not understand that."
+            print(f"{Fore.RED}🤔 Could not understand audio{Style.RESET_ALL}")
         except sr.RequestError as e:
-            print(f"Could not request results; {e}")
-            return f"Could not request results; {e}"
-
-# ... existing imports and initialization code ...
+            print(f"{Fore.RED}🌐 API Error: {e}{Style.RESET_ALL}")
+        return None
 
 def chat():
-    print("👋 Hi! I'm your AI assistant. How can I help you today?")
-    print("-" * 50)
+    print(f"{Fore.GREEN}{'='*50}")
+    print("🤖 AI Assistant v2.0")
+    print(f"💡 Say '{CONFIG['wake_word']}' to get my attention!")
+    print(f"{'='*50}{Style.RESET_ALL}")
+    
+    waiting_for_wake_word = True
     
     while not stop_flag.is_set():
         try:
-            print("\n🎤 Listening...")
-            time.sleep(0.5)  # Small pause before listening
+            if waiting_for_wake_word:
+                user_input = listen()
+                if user_input and CONFIG["wake_word"] in user_input:
+                    waiting_for_wake_word = False
+                    speak("Hello! How can I help you?")
+                continue
             
             user_input = listen()
-            if user_input:
-                print(f"You: {user_input}")
-                print("⌛ Processing...")
-                response = process_query(user_input)
-                if response:
-                    print(f"\n🤖 Assistant: {response}")
-                    speak(response)
-                    if stop_flag.is_set():
-                        break
-                    print("\n" + "="* 50)
-                    print("👂 What else can I help you with?")
-                    time.sleep(2)  # Longer pause after speaking
+            if not user_input:
+                continue
+                
+            # Check for commands first
+            if process_commands(user_input):
+                continue
+                
+            # Process normal queries
+            print(f"{Fore.YELLOW}⌛ Processing...{Style.RESET_ALL}")
+            response = process_query(user_input)
+            
+            if response:
+                print(f"\n{Fore.GREEN}🤖 Assistant: {response}{Style.RESET_ALL}")
+                speak(response)
+                save_conversation(user_input, response)
+                
+                if stop_flag.is_set():
+                    break
+                    
+                print(f"\n{Fore.CYAN}{'='*50}")
+                print("👂 What else can I help you with?")
+                print(f"{'='*50}{Style.RESET_ALL}")
+                time.sleep(1)
+                
         except Exception as e:
-            print("I didn't catch that. Could you please try again?")
+            print(f"{Fore.RED}❌ Error: {str(e)}{Style.RESET_ALL}")
             time.sleep(1)
 
 def process_query(query):
@@ -108,13 +161,20 @@ def process_query(query):
         return result.stdout.strip() if result.returncode == 0 else "I'm not sure about that."
     except Exception as e:
         return "I'm having trouble with that request."
+
+def cleanup():
+    print(f"{Fore.YELLOW}Cleaning up...{Style.RESET_ALL}")
+    stop_flag.set()
+    engine.stop()
             
 if __name__ == "__main__":
     try:
         chat_thread = threading.Thread(target=chat)
         chat_thread.start()
+        
         while chat_thread.is_alive():
             chat_thread.join(timeout=1)
     except KeyboardInterrupt:
-        stop_flag.set()
-        chat_thread.join()
+        cleanup()
+    finally:
+        print(f"{Fore.GREEN}👋 Goodbye!{Style.RESET_ALL}")
